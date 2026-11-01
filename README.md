@@ -96,13 +96,71 @@ every command before you approve it, and keep auto-approve off.
 
 ## Project proposal (Week 1)
 
-<!-- About 300 words: data source and backup API, your decision and workflow (from your baseline log),
-     your first agent idea, and risks. See the Week 1 page. -->
+My Small Business Economic Data Assistant will help answer: should a small
+business review its operating budget based on changing economic conditions?
+The primary source is the [World Bank Indicators API v2](https://datahelpdesk.worldbank.org/knowledgebase/articles/889392).
+The project retrieves annual consumer-price inflation, modeled unemployment,
+and GDP growth for 20 countries, requesting 2010–2026 where available. Country
+and indicator metadata provide definitions and context. International data
+support comparisons; they do not measure a particular firm's expenses.
+
+My [baseline log](docs/baseline_log.md) describes a weekly decision workflow.
+On October 23, 2026, I spent 20 minutes reviewing information about inflation
+and its possible effects on supplies, transportation, utilities, and other
+expenses. I wanted to know which expenses had risen most, how costs compared
+with previous months, and whether revenue covered increases. I recommended
+reviewing the budget but wanted actual business expenses before proposing
+changes. Finding reliable, relevant information and connecting it to operating
+expenses were documented difficulties.
+
+The backup is the [BLS Public Data API](https://www.bls.gov/developers/api_FAQs.htm),
+using U.S. CPI, unemployment, and potentially earnings data. Its narrower scope
+would support U.S. price and labor analysis rather than replace this international
+dataset or GDP coverage. BLS requests must be batched by series and year ranges;
+its [documented signatures](https://www.bls.gov/developers/api_signature_v2.htm)
+do not provide World Bank-style page/per_page pagination. This fallback is
+proposed, not implemented.
+
+A future agent could prepare a budget-review briefing when newly retrieved
+values change, citing years, sources, missing values, and possible revisions.
+It would request human review rather than adjust budgets or financial records.
+
+Risks include delayed or revised data, missing observations, API outages, and
+misinterpreting national averages. Annual data cannot provide real-time weekly
+economic alerts. Timestamped snapshots, completeness checks, and source
+citations help expose these limits. Published licensing and attribution
+requirements must be respected, including exceptions for future indicators.
+Success would mean reducing information-gathering time while keeping budget
+decisions grounded in evidence and actual business costs.
 
 ## How to run this project
 
 <!-- Keep this current: how to run the sync, the website, and the evaluations. -->
 
+### Milestone 1 — World Bank Indicators API v2
+
+The current ingestion source is World Development Indicators, using annual
+consumer-price inflation, modeled unemployment, and real GDP growth for 20
+countries from 2010 through 2026 where available. These indicators provide broad
+economic context for deciding whether to review a small-business operating
+budget; actual business expenses are still needed before recommending changes.
+
+Run `.venv\Scripts\python.exe ingest/fetch.py` from the repository root.
+No API credentials are needed. See [ingestion instructions](ingest/README.md)
+for tests, outputs, pagination, retries, and important functions, and the
+[data dictionary](docs/data_dictionary.md) for definitions and limitations.
+Raw downloads stay in ignored `data/raw/`; a small authentic sample is saved in
+`data/sample/world_bank_sample.json`. Database loading and scheduled sync are
+later milestones.
+
 ## Credits
+
+The World Bank: World Development Indicators: IMF; ILO/ILOSTAT; national
+statistical organizations/central banks; OECD; World Bank estimates.
+The selected indicators are labeled CC BY 4.0. See the
+[license](https://datacatalog.worldbank.org/public-licenses) and
+[dataset terms](https://www.worldbank.org/ext/en/legal/terms-conditions/datasets).
+Retrieval dates are recorded with the data. The local sample is a subset
+with original API field values preserved. No provider endorsement is implied.
 
 <!-- Your data API's required attribution, plus any open-source code or samples you used. -->
