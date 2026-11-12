@@ -10,6 +10,43 @@ Code that moves data from your API into your database. You build it with your AI
 
 Only the sync connects as the database owner (`DATABASE_URL`). Everything else uses a limited role.
 
+## Milestone 2: saved-snapshot loader
+
+`load.py` defaults to **offline validation only**:
+
+```powershell
+.venv\Scripts\python.exe -B ingest/load.py
+```
+
+It reads the complete local snapshot `20261102T041022160331Z`, checks all
+manifest-listed pages, and requires 20 countries, three indicators, 960 unique
+observations, 950 numeric values, and ten nulls. It neither fetches data nor
+reads credentials in this mode. Run the offline suite with
+`.venv\Scripts\python.exe -B -m unittest discover -s tests -v`.
+
+The first live load requires separate approval. Only an explicit `--load` flag
+reads `DATABASE_URL` from the repository's local `.env` and connects. This
+one-time Week 2 loader uses the authorized loading connection; applications
+continue to use limited roles. It does not create tables or roles.
+
+All inserts are parameterized and run in one transaction, with countries and
+indicators inserted before observations. `ON CONFLICT ... DO NOTHING` preserves
+existing rows, including audit timestamps and provenance, on repeat loads.
+Consequently this loader does not apply revised historical values or refresh
+existing metadata; revision updates require a later sync policy. New rows use
+database audit defaults. Raw numeric precision is retained with Decimal;
+returned nulls stay NULL, and absent combinations create no rows.
+
+Observation provenance records the snapshot retrieval time, page-level provider
+update date, snapshot identifier, and page filename. Database errors are
+reported by error type without raw connection details, and are not retried.
+Offline unit tests generate synthetic fixtures and exercise a database double,
+not PostgreSQL itself. They run without ignored raw data or credentials. An
+optional full-snapshot integration test validates the real approved snapshot
+when present and is skipped otherwise; it also opens no database connection.
+Prior live loading and idempotency results are recorded in
+`../docs/implementation_brief.md`; no live run is part of this test command.
+
 ## Milestone 1: World Bank fetch
 
 From the repository root, using the existing Python environment:
