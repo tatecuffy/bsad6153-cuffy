@@ -4,9 +4,10 @@
 **My decision:** Should a small business review its operating budget based on changing economic conditions?
 **Website:** &lt;your domain, from Week 4&gt;
 
-This repository is one complete AI system, built over eight weeks: a real API, synced on a schedule into a
-PostgreSQL database, shown on a public website, with a chatbot and an agent that answer and act from your
-own data. You build it with an AI coding agent, and you read and verify everything it writes.
+This eight-week project is building toward a complete AI system. Through Milestone 2,
+World Bank retrieval, a Supabase PostgreSQL schema, saved-snapshot loading, and SQL
+analysis are implemented. Scheduled sync, public data views, a chatbot, and an agent
+remain later milestones. AI-generated work is reviewed and verified by the student.
 
 ---
 
@@ -150,8 +151,70 @@ No API credentials are needed. See [ingestion instructions](ingest/README.md)
 for tests, outputs, pagination, retries, and important functions, and the
 [data dictionary](docs/data_dictionary.md) for definitions and limitations.
 Raw downloads stay in ignored `data/raw/`; a small authentic sample is saved in
-`data/sample/world_bank_sample.json`. Database loading and scheduled sync are
-later milestones.
+`data/sample/world_bank_sample.json`. Database loading is implemented in
+Milestone 2 below; scheduled sync remains later work.
+
+### Milestone 2 — PostgreSQL database and SQL analysis
+
+The deployed schema has `countries`, `indicators`, and `observations` tables.
+The verified load contains 20 countries, three indicators, and 960 unique annual
+observations for 2010–2025: 950 numeric values and ten NULLs. All five analytical
+queries succeeded. Repeat loading inserted zero rows; a prior comparison also
+confirmed unchanged records and audit timestamps.
+
+**Setup:** complete the Python 3.12 environment and dependency installation
+above. Offline unit tests require neither `.env` nor a database. For separately
+authorized live loading, privately configure `DATABASE_URL` with the intended
+Supabase Session pooler connection in the ignored local `.env`; never paste or
+print it. The existing schema is already deployed. Do not reapply `schema.sql`
+as part of routine loading. Read-only role SQL is proposed but not yet applied
+or permission-tested; see [access-role proposal](docs/access_roles.md).
+
+From the repository root in PowerShell, run the offline suite:
+
+```powershell
+.venv\Scripts\python.exe -B -m unittest discover -s tests -v
+```
+
+Unit tests generate synthetic JSON fixtures in temporary directories and use a
+database double. They run from a clean checkout after installing requirements.
+An optional actual-data integration test runs when the approved snapshot is
+present and is skipped otherwise; no tests connect to Supabase. Synthetic
+fixtures are test inputs, not economic observations.
+
+**Local snapshot prerequisite:** the production loader expects
+`data/raw/world_bank/20261102T041022160331Z/manifest.json` and all listed pages.
+Raw files are deliberately absent from Git. Restore that approved snapshot
+locally from your saved files to run its integration test or production loader.
+The small portable sample is not a substitute, and a fresh API fetch would
+produce a different snapshot. Do not commit raw downloads or credentials.
+
+To validate the saved snapshot without reading credentials or connecting:
+
+```powershell
+.venv\Scripts\python.exe -B ingest/load.py
+```
+
+Only after explicit approval for a live load, use:
+
+```powershell
+.venv\Scripts\python.exe -B ingest/load.py --load
+```
+
+The loader uses parameterized inserts in one transaction, inserts parents first,
+and preserves NULLs, numeric precision, and source provenance. Conflicting
+keys are skipped with `ON CONFLICT DO NOTHING`; existing values and audit times
+are preserved, so this loader does not apply later source revisions. For the
+already-loaded snapshot, the expected committed insertion counts are zero for
+all three tables. Errors are not automatically retried.
+
+Project evidence:
+
+- [Implementation brief](docs/implementation_brief.md)
+- [Schema, ER diagram, and rationale](docs/schema.md)
+- [Five SQL queries](db/queries.sql) and [verified findings](docs/query_findings.md)
+- [Data quality assessment](docs/data_quality.md) and [AI review log](docs/ai_review_log.md)
+- [Milestone 2 Loom screencast](https://www.loom.com/share/8d7ebcd1a555424c8294d346c0a7cfa7)
 
 ## Credits
 
