@@ -1,0 +1,261 @@
+{
+  "retrieved_at": "2026-11-01T05:08:57.984242+00:00",
+  "source": "World Development Indicators",
+  "license": "CC BY 4.0",
+  "license_url": "https://datacatalog.worldbank.org/public-licenses",
+  "terms_url": "https://www.worldbank.org/ext/en/legal/terms-conditions/datasets",
+  "changes": "Subset of API records; original field values preserved.",
+  "countries": [
+    {
+      "id": "ARG",
+      "iso2Code": "AR",
+      "name": "Argentina",
+      "region": {
+        "id": "LCN",
+        "iso2code": "ZJ",
+        "value": "Latin America & Caribbean "
+      },
+      "adminregion": {
+        "id": "LAC",
+        "iso2code": "XJ",
+        "value": "Latin America & Caribbean (excluding high income)"
+      },
+      "incomeLevel": {
+        "id": "UMC",
+        "iso2code": "XT",
+        "value": "Upper middle income"
+      },
+      "lendingType": {
+        "id": "IBD",
+        "iso2code": "XF",
+        "value": "IBRD"
+      },
+      "capitalCity": "Buenos Aires",
+      "longitude": "-58.4173",
+      "latitude": "-34.6118"
+    }
+  ],
+  "indicators": [
+    {
+      "id": "FP.CPI.TOTL.ZG",
+      "name": "Inflation, consumer prices (annual %)",
+      "unit": "",
+      "source": {
+        "id": "2",
+        "value": "World Development Indicators"
+      },
+      "sourceNote": "Inflation as measured by the consumer price index reflects the annual percentage change in the cost to the average consumer of acquiring a basket of goods and services that may be fixed or changed at specified intervals, such as yearly.",
+      "sourceOrganization": "International Financial Statistics database, International Monetary Fund (IMF)",
+      "topics": [
+        {
+          "id": "3",
+          "value": "Economy & Growth"
+        },
+        {
+          "id": "7",
+          "value": "Financial Sector "
+        }
+      ]
+    },
+    {
+      "id": "SL.UEM.TOTL.ZS",
+      "name": "Unemployment, total (% of total labor force) (modeled ILO estimate)",
+      "unit": "",
+      "source": {
+        "id": "2",
+        "value": "World Development Indicators"
+      },
+      "sourceNote": "Unemployment refers to the share of the labor force that is without work but available for and seeking employment.",
+      "sourceOrganization": "ILO Modelled Estimates database (ILOEST), International Labour Organization (ILO), uri: https://ilostat.ilo.org/data/bulk/, publisher: ILOSTAT, type: external database, date accessed: January 17, 2026",
+      "topics": [
+        {
+          "id": "4",
+          "value": "Education "
+        },
+        {
+          "id": "10",
+          "value": "Social Protection & Labor"
+        }
+      ]
+    },
+    {
+      "id": "NY.GDP.MKTP.KD.ZG",
+      "name": "GDP growth (annual %)",
+      "unit": "",
+      "source": {
+        "id": "2",
+        "value": "World Development Indicators"
+      },
+      "sourceNote": "Gross domestic product is the total income earned through the production of goods and services in an economic territory during an accounting period. It can be measured in three different ways: using either the expenditure approach, the income approach, or the production approach. This indicator denotes the percentage change over each previous year of the constant price (base year 2015) series in United States dollars.",
+      "sourceOrganization": "Country official statistics, National Statistical Organizations and/or Central Banks;\nNational Accounts data files, Organisation for Economic Co-operation and Development (OECD);\nStaff estimates, World Bank (WB)",
+      "topics": [
+        {
+          "id": "3",
+          "value": "Economy & Growth"
+        }
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "indicator": {
+        "id": "FP.CPI.TOTL.ZG",
+        "value": "Inflation, consumer prices (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2024",
+      "value": 219.883929014578,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "FP.CPI.TOTL.ZG",
+        "value": "Inflation, consumer prices (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2023",
+      "value": 133.488935594175,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "FP.CPI.TOTL.ZG",
+        "value": "Inflation, consumer prices (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2022",
+      "value": 72.430757531824,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "SL.UEM.TOTL.ZS",
+        "value": "Unemployment, total (% of total labor force) (modeled ILO estimate)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2025",
+      "value": 7.145,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "SL.UEM.TOTL.ZS",
+        "value": "Unemployment, total (% of total labor force) (modeled ILO estimate)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2024",
+      "value": 7.15,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "SL.UEM.TOTL.ZS",
+        "value": "Unemployment, total (% of total labor force) (modeled ILO estimate)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2023",
+      "value": 6.139,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "NY.GDP.MKTP.KD.ZG",
+        "value": "GDP growth (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2025",
+      "value": 4.36733330217022,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "NY.GDP.MKTP.KD.ZG",
+        "value": "GDP growth (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2024",
+      "value": -1.34293072157739,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "NY.GDP.MKTP.KD.ZG",
+        "value": "GDP growth (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2023",
+      "value": -1.85578803046339,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    },
+    {
+      "indicator": {
+        "id": "FP.CPI.TOTL.ZG",
+        "value": "Inflation, consumer prices (annual %)"
+      },
+      "country": {
+        "id": "AR",
+        "value": "Argentina"
+      },
+      "countryiso3code": "ARG",
+      "date": "2025",
+      "value": null,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 1
+    }
+  ]
+}

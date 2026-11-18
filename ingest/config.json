@@ -1,0 +1,9 @@
+{
+  "countries": ["USA", "CAN", "MEX", "BRA", "ARG", "CHL", "COL", "GBR", "FRA", "DEU", "ITA", "ESP", "JPN", "KOR", "AUS", "NZL", "IND", "IDN", "ZAF", "TUR"],
+  "indicators": ["FP.CPI.TOTL.ZG", "SL.UEM.TOTL.ZS", "NY.GDP.MKTP.KD.ZG"],
+  "start_year": 2010,
+  "end_year": 2026,
+  "source": "2",
+  "per_page": 100,
+  "minimum_non_missing": 500
+}
