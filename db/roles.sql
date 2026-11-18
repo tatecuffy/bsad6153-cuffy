@@ -1,27 +1,20 @@
--- db/roles.sql: who may do what in your database (Week 2, extended in Week 6).
---
--- NEVER PUT A PASSWORD IN THIS FILE. It is committed to GitHub.
--- Create each role here without a password, then set the password separately
--- in the Supabase SQL editor (and nowhere in your repository):
---
---     alter role app_reader with password '...long random password...';
---
--- Then put the role's connection string in .env as APP_DATABASE_URL.
---
--- Week 2: a read-only role for the website, chatbot, and golden-question checker.
--- create role app_reader login;
--- grant usage on schema public to app_reader;
--- grant select on <your data tables> to app_reader;
---
--- Week 3: add sync_runs to the grant above when you create it.
---
--- Week 6: the agent's own role (see the Week 6 page for the exact grants).
--- create role agent_writer login;
--- grant usage on schema public to agent_writer;
--- grant select on <your data tables>, sync_runs, agent_runs, agent_proposals to agent_writer;
--- grant insert on agent_runs, agent_proposals to agent_writer;
--- grant update on agent_runs to agent_writer;
---
--- Week 6: the one write your website may do, which covers only the review columns.
--- grant select on agent_runs, agent_proposals to app_reader;
--- grant update (status, reviewed_at, reviewer_note) on agent_proposals to app_reader;
+-- Milestone 2 PROPOSAL ONLY: not applied or permission-tested.
+-- Review docs/access_roles.md before execution. No passwords belong here.
+-- Requires separate authorization and a provisioning role with sufficient rights.
+-- Deliberately stop if app_reader already exists rather than silently reuse it.
+
+BEGIN;
+
+CREATE ROLE app_reader LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+    NOREPLICATION NOBYPASSRLS;
+
+GRANT USAGE ON SCHEMA public TO app_reader;
+GRANT SELECT ON TABLE public.countries, public.indicators, public.observations
+    TO app_reader;
+
+COMMIT;
+
+-- Configure authentication privately after approval, then store its connection
+-- in ignored local APP_DATABASE_URL. No owner connection belongs in the app.
+-- No write, sequence, role-membership, or future-table grants are proposed.
+-- Later milestones may explicitly extend grants for sync or reviewed proposals.
