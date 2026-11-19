@@ -49,7 +49,7 @@ def read_json(path):
                       parse_constant=reject_constant)
 
 
-def prepare_snapshot(directory=SNAPSHOT):
+def prepare_snapshot(directory=SNAPSHOT, *, baseline=True):
     """Read only manifest-listed pages, validate, and build database parameters."""
     directory = Path(directory)
     manifest = read_json(directory / 'manifest.json')
@@ -131,11 +131,15 @@ def prepare_snapshot(directory=SNAPSHOT):
             raise LoadError('Non-finite observation rejected.')
         projected.append(dict(row, value=float(value) if isinstance(value, Decimal) else value))
     counts = validate_observations(projected, country_ids, indicator_ids, config)
-    if (len(observations), sum(counts.values())) != (960, 950):
+    if baseline and (len(observations), sum(counts.values())) != (960, 950):
         raise LoadError('Expected 960 observations, 950 numeric values and 10 nulls.')
-    for field, actual in [('country_records', 20), ('indicator_records', 3),
-                          ('observation_records', 960), ('non_missing_total', 950),
-                          ('total_resource_records', 983)]:
+    for field, actual in [
+        ('country_records', len(countries)),
+        ('indicator_records', len(indicators)),
+        ('observation_records', len(observations)),
+        ('non_missing_total', sum(counts.values())),
+        ('total_resource_records', len(countries) + len(indicators) + len(observations)),
+    ]:
         if manifest[field] != actual:
             raise LoadError('Manifest totals do not match validated snapshot.')
     if counts != manifest['non_missing_by_indicator']:
@@ -167,6 +171,30 @@ def prepare_snapshot(directory=SNAPSHOT):
     return Snapshot(country_params, indicator_params, observation_params)
 
 
+def insert_dimensions(conn, snapshot):
+    """Insert missing metadata and resolve source codes to database IDs."""
+    inserted = dict(countries=0, indicators=0, observations=0)
+    country_ids, indicator_ids = {}, {}
+    for row in snapshot.countries:
+        result = conn.execute('''INSERT INTO public.countries
+                (iso3_code, iso2_code, name, region_code, income_level_code, capital_city)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (iso3_code) DO NOTHING''', row)
+        inserted['countries'] += result.rowcount
+        country_ids[row[0]] = conn.execute(
+            'SELECT country_id FROM public.countries WHERE iso3_code = %s', (row[0],)).fetchone()[0]
+    for row in snapshot.indicators:
+        result = conn.execute('''INSERT INTO public.indicators
+                (indicator_code, name, source_id, source_organization, source_note,
+                 api_unit, measurement_unit, frequency)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (indicator_code) DO NOTHING''', row)
+        inserted['indicators'] += result.rowcount
+        indicator_ids[row[0]] = conn.execute(
+            'SELECT indicator_id FROM public.indicators WHERE indicator_code = %s', (row[0],)).fetchone()[0]
+    return inserted, country_ids, indicator_ids
+
+
 def insert_snapshot(conn, snapshot):
     """Atomically insert parents then children; conflicts preserve existing rows.
 
@@ -175,26 +203,8 @@ def insert_snapshot(conn, snapshot):
     """
     if conn.autocommit:
         raise LoadError('Loader requires a non-autocommit connection.')
-    inserted = dict(countries=0, indicators=0, observations=0)
     with conn.transaction():
-        country_ids, indicator_ids = {}, {}
-        for row in snapshot.countries:
-            result = conn.execute('''INSERT INTO public.countries
-                (iso3_code, iso2_code, name, region_code, income_level_code, capital_city)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (iso3_code) DO NOTHING''', row)
-            inserted['countries'] += result.rowcount
-            country_ids[row[0]] = conn.execute(
-                'SELECT country_id FROM public.countries WHERE iso3_code = %s', (row[0],)).fetchone()[0]
-        for row in snapshot.indicators:
-            result = conn.execute('''INSERT INTO public.indicators
-                (indicator_code, name, source_id, source_organization, source_note,
-                 api_unit, measurement_unit, frequency)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (indicator_code) DO NOTHING''', row)
-            inserted['indicators'] += result.rowcount
-            indicator_ids[row[0]] = conn.execute(
-                'SELECT indicator_id FROM public.indicators WHERE indicator_code = %s', (row[0],)).fetchone()[0]
+        inserted, country_ids, indicator_ids = insert_dimensions(conn, snapshot)
         for row in snapshot.observations:
             params = (country_ids[row[0]], indicator_ids[row[1]]) + row[2:]
             result = conn.execute('''INSERT INTO public.observations
