@@ -10,6 +10,9 @@ Code that moves data from your API into your database. You build it with your AI
 
 Only the sync connects as the database owner (`DATABASE_URL`). Everything else uses a limited role.
 
+For the Milestone 3 deployment steps, read-only role checks, and scheduled-run
+evidence, see [sync tests and deployment](../docs/sync_tests.md).
+
 ## Milestone 2: saved-snapshot loader
 
 `load.py` defaults to **offline validation only**:

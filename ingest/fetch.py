@@ -169,7 +169,7 @@ def load_config(path):
     return config
 
 
-def run(config):
+def run(config, *, write_sample=True):
     """Download linked resources, check completeness, and publish an authentic sample."""
     started = datetime.now(timezone.utc)
     run_dir = ROOT / "data/raw/world_bank" / started.strftime("%Y%m%dT%H%M%S%fZ")
@@ -232,8 +232,10 @@ def run(config):
                   "changes": "Subset of API records; original field values preserved.",
                   "countries": [row for row in countries if row["id"] in sample_countries],
                   "indicators": indicators, "observations": sample_rows}
-        write_json(ROOT / "data/sample/world_bank_sample.json", sample)
-        manifest.update(status="complete", observation_records=len(observations),
+        if write_sample:
+            write_json(ROOT / "data/sample/world_bank_sample.json", sample)
+        manifest.update(status="complete", snapshot_id=run_dir.name,
+                        observation_records=len(observations),
                         country_records=len(countries), indicator_records=len(indicators),
                         non_missing_by_indicator=counts, non_missing_total=sum(counts.values()),
                         coverage_by_indicator=coverage,
