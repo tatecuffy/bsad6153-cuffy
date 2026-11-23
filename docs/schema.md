@@ -174,16 +174,82 @@ codes remain globally unique. Multiple datasets with overlapping codes or
 competing measurements may require a sources table, source-scoped indicator
 uniqueness, revised observation keys, and frequency or geography changes.
 
-The proposed `app_reader` role receives schema usage and SELECT on the three
-data tables in `db/roles.sql`. Application and chatbot connections should use
-that limited role; provisioning and authorized loading remain separate.
-The role SQL is prepared but has not been applied or permission-tested.
-See `access_roles.md` for prerequisites and the verification plan. No roles,
-grants, passwords, or connection configuration were changed during preparation.
+For Milestone 3, [roles.sql](../db/roles.sql) defines `app_reader` with schema
+usage and SELECT on `countries`, `indicators`, `observations`, and `sync_runs`.
+It matches deployment migration [004_app_reader.sql](../db/migrations/004_app_reader.sql)
+and requires migration 003 first. The reader policy allows SELECT on sync
+history under row-level security. The app and reference checker use
+`APP_DATABASE_URL`, which is blank in the committed environment template.
 
 The SQL wraps all three table definitions in one transaction. It deliberately
 omits `IF NOT EXISTS` so an incompatible existing table cannot be silently
 accepted. Reapplying it is not a migration strategy. Loader idempotency was
 verified separately: a repeat load inserted zero new rows and preserved existing
-records and audit timestamps. Sync logging, evaluation, and agent tables are
-later work.
+records and audit timestamps. Migration 003 adds sync logging separately.
+
+## Milestone 3 Part A access verification
+
+On November 22, 2026, I ran the reader verification command locally:
+
+```powershell
+.venv/Scripts/python.exe -B scripts/check_db.py --app --verify-permissions
+```
+
+The initial attempt, before the reader credential was configured, returned:
+
+```text
+[FAIL] APP_DATABASE_URL is not set. Configure it privately using .env.example.
+```
+
+An alternate check attempted `SET LOCAL ROLE app_reader` inside a transaction
+configured to roll back. PostgreSQL rejected the role switch with
+`InsufficientPrivilege (SQLSTATE 42501)` before any reader SELECT, INSERT, or
+DELETE ran. This error is evidence about the role switch only.
+
+In a separate read-only transaction, I checked the deployed role and grants
+with these queries:
+
+```sql
+SELECT rolcanlogin FROM pg_roles WHERE rolname = 'app_reader';
+
+SELECT relation,
+       has_table_privilege('app_reader', relation, 'SELECT'),
+       has_any_column_privilege('app_reader', relation, 'INSERT'),
+       has_any_column_privilege('app_reader', relation, 'UPDATE'),
+       has_table_privilege('app_reader', relation, 'DELETE')
+FROM (VALUES ('public.countries'), ('public.indicators'),
+             ('public.observations'), ('public.sync_runs')) AS tables(relation);
+```
+
+```text
+reader_login_enabled: True
+relation | select | insert | update | delete
+public.countries | True | False | False | False
+public.indicators | True | False | False | False
+public.observations | True | False | False | False
+public.sync_runs | True | False | False | False
+```
+
+After configuring the reader credential privately, I reran the same command.
+It exited with code 0 and returned:
+
+```text
+[ok] Connected using APP_DATABASE_URL
+     Database user: app_reader
+[ok] SELECT succeeded: countries=20, indicators=3, observations=960, sync_runs=9
+[ok] INSERT on public.observations: permission denied for table observations (SQLSTATE 42501)
+[ok] DELETE on public.observations: permission denied for table observations (SQLSTATE 42501)
+```
+
+The checker ran these two statements as `app_reader`:
+
+```sql
+INSERT INTO public.observations (value) SELECT NULL::numeric WHERE FALSE;
+DELETE FROM public.observations WHERE FALSE;
+```
+
+Each write probe targeted zero rows and ran in a separate rollback-only
+transaction. PostgreSQL denied both probes, and the check changed no records.
+
+On November 22, 2026, the project owner confirmed that the Supabase Data API
+was disabled in the dashboard under **Integrations → Data API**.

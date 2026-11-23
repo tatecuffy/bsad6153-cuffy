@@ -2,13 +2,16 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from functools import partial
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-from ingest.fetch import FetchError, validate_observations
+import requests
+
+from ingest.fetch import FetchError, request_page, validate_observations
 from ingest.load import Snapshot, prepare_snapshot
 from ingest.sync import INSERT_OBSERVATION, UPDATE_OBSERVATION, run, sync_observations
 from test_load import MemoryConnection, Result, write_synthetic_snapshot
@@ -119,6 +122,64 @@ class SyncTests(unittest.TestCase):
         write_observations.assert_called_once_with(primary, prepare.return_value)
         self.assertIs(primary.transaction.return_value.__exit__.call_args.args[0], RuntimeError)
         self.assertEqual(fallback.execute.call_args.args[1][3:], ("failure", 0, 0, 0))
+
+
+class BreakItTests(unittest.TestCase):
+    def setUp(self):
+        self.connect = self.enterContext(patch("ingest.sync.psycopg.connect"))
+        primary_connection, failure_connection = MagicMock(), MagicMock()
+        self.connect.side_effect = [primary_connection, failure_connection]
+        self.primary = primary_connection.__enter__.return_value
+        self.failure_connection = failure_connection.__enter__.return_value
+        self.primary.execute.return_value.fetchone.return_value = (True,)
+        self.report = self.enterContext(patch("builtins.print"))
+
+    def assert_safe_failure(self, stage):
+        self.primary.execute.assert_called_once()
+        self.assertIn("pg_try_advisory_lock", self.primary.execute.call_args.args[0])
+        self.primary.transaction.assert_not_called()
+        self.failure_connection.execute.assert_called_once()
+        statement, params = self.failure_connection.execute.call_args.args
+        self.assertIn("INSERT INTO public.sync_runs", statement)
+        self.assertEqual(params[3:], ("failure", 0, 0, 0))
+        self.assertIn(f"failed during {stage}.", self.report.call_args.args[0])
+
+    def test_world_bank_timeout_exhausts_retries_before_any_data_write(self):
+        with TemporaryDirectory() as tmp, patch("ingest.fetch.ROOT", Path(tmp)):
+            with patch("ingest.fetch.requests.Session") as session_factory:
+                session = session_factory.return_value.__enter__.return_value
+                session.get.side_effect = requests.Timeout("synthetic World Bank timeout")
+                sleep = Mock()
+                without_waiting = partial(request_page, sleep=sleep)
+                with patch("ingest.fetch.request_page", without_waiting):
+                    self.assertEqual(run("synthetic URL"), 1)
+
+            self.assertEqual(session.get.call_count, 5)
+            self.assertEqual(sleep.call_count, 4)
+            manifests = list(Path(tmp).glob("data/raw/world_bank/*/manifest.json"))
+            self.assertEqual(len(manifests), 1)
+            manifest = json.loads(manifests[0].read_text(encoding="utf-8"))
+            self.assertEqual(manifest["status"], "incomplete")
+            self.assertIn("five attempts", manifest["error"])
+        self.assert_safe_failure("World Bank fetch")
+
+    def test_invalid_snapshot_rejected_before_any_data_write(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw = root / "data/raw/world_bank"
+            raw.mkdir(parents=True)
+            snapshot = raw / "synthetic"
+            write_synthetic_snapshot(snapshot)
+            page = snapshot / "observations_FP.CPI.TOTL.ZG_page_001.json"
+            payload = json.loads(page.read_text(encoding="utf-8"))
+            payload[1][0]["value"] = "invalid numeric value"
+            page.write_text(json.dumps(payload), encoding="utf-8")
+
+            with (patch("ingest.sync.ROOT", root),
+                  patch("ingest.sync.fetch.load_config", return_value={"end_year": 2026}),
+                  patch("ingest.sync.fetch.run", return_value={"snapshot_id": snapshot.name})):
+                self.assertEqual(run("synthetic URL"), 1)
+        self.assert_safe_failure("snapshot validation")
 
 
 if __name__ == "__main__":

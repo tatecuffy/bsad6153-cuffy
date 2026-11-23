@@ -11,6 +11,49 @@ tests require no database connection or secrets.
 Offline migration tests also inspect the SQL for explicit RLS, API role
 revocations, and the reader policy's rerun guard. They do not execute SQL.
 
+## Milestone 3 Part G — break-it tests on November 22, 2026
+
+Commands run from the project root:
+
+```powershell
+.venv/Scripts/python.exe -B -m unittest discover -s tests -p test_sync.py -k BreakItTests -v
+.venv/Scripts/python.exe -B -m unittest discover -s tests -v
+```
+
+| Scenario | Expected behavior | Actual behavior | Result |
+| --- | --- | --- | --- |
+| Every World Bank request times out | Stop after bounded retries, mark the snapshot incomplete, and avoid any data write. | The real fetch code made five mocked request attempts and scheduled four waits. The temporary manifest was incomplete. The sync returned 1, opened no data-write transaction, and sent the database mock one failure-log insert with zero observation counts. | Pass |
+| A snapshot contains text in a numeric observation field | Reject the snapshot before opening the data-write transaction. | The real snapshot validator rejected the synthetic page. The sync returned 1 at snapshot validation, opened no data-write transaction, and sent the database mock one failure-log insert with zero observation counts. | Pass |
+
+The focused run passed **2 of 2** tests. The full suite passed **30 of 30**,
+including the existing test that checks the rollback path when success
+logging fails. The break-it tests use temporary files and mocked HTTP and
+database connections. They check the sync's control flow without measuring
+live retry timing or exercising a real PostgreSQL rollback. They did not
+modify production data or trigger a GitHub Actions run.
+
+### Golden-question references
+
+The Part F command below passed all 15 reference queries in both runs as
+`app_reader`. Q10 and Q11 each returned one row in both runs. On November 22
+at 9:17:26 p.m. CST, I also executed the two corresponding `reference_sql`
+statements from the CSV directly as `app_reader` in a read-only transaction
+to confirm the returned values.
+
+```powershell
+.venv/Scripts/python.exe -B evals/check_reference.py
+```
+
+| Reference | Expected behavior | Actual SQL result | Result |
+| --- | --- | --- | --- |
+| Q10 — Argentina and U.S. inflation | Compare only years with numeric values for both countries. | One row in each Part F run. The follow-up confirmed seven shared years, 2018–2024, with averages of 86.29% and 3.61%, respectively, and an unrounded-calculation gap of 82.69 percentage points. | Pass |
+| Q11 — U.S. inflation in 2025 | Distinguish a stored NULL from an absent row or a numeric zero. | One row in each Part F run. The follow-up returned `reported_null` and SQL NULL for the rate. | Pass |
+
+The [Part F run record](../evals/README.md#live-results-on-november-22-2026)
+and [golden-question CSV](../evals/golden_questions.csv) contain the
+execution evidence and reference commands. These checks validate SQL
+execution and the two returned results. Chatbot behavior remains untested.
+
 The sync downloads the configured history and extends the upper bound to the
 current year when necessary. It compares records by country, indicator, and
 year. It updates values or observation metadata only when they differ, including
@@ -131,9 +174,19 @@ target. Keep the reader credential separate.
 
 ## Scheduled evidence
 
-| Actions run link | Sync run ID | Finished at (UTC) | Inserted | Updated | Unchanged |
+On November 22, 2026, I verified three successful GitHub Actions runs with
+event `schedule` on `main`. I matched the sync ID and counts in each Actions
+log to the corresponding Supabase row read as `app_reader`.
+
+| GitHub Actions run | Actions started (UTC) | Supabase finished (UTC) | Sync run ID | Outcome | Inserted / Updated / Unchanged |
 | --- | --- | --- | --- | --- | --- |
-| Pending deployment | | | | | |
+| [44576559569](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/44576559569) | 2026-11-19 17:22:53 | 2026-11-19 17:25:55.943075 | `75a55ae1-9b7f-4fa6-9228-121f758e8dd9` | Success | 0 / 0 / 960 |
+| [44952645046](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/44952645046) | 2026-11-21 21:39:12 | 2026-11-21 21:40:34.875585 | `9f552548-f28a-4ed3-97f0-81debe9e4b16` | Success | 0 / 0 / 960 |
+| [45074589596](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45074589596) | 2026-11-22 21:53:17 | 2026-11-22 21:55:28.415695 | `397092ca-e978-49d6-8ae1-f934ef673fe3` | Success | 0 / 0 / 960 |
+
+The first and last Actions start times span **76 hours, 30 minutes, and
+24 seconds**. In CST they are November 19 at 11:22:53 a.m. and November 22
+at 3:53:17 p.m. The separate manual smoke test is excluded.
 
 ```sql
 SELECT run_id, started_at, finished_at, status,
