@@ -238,18 +238,61 @@ November 22, 2026 follow-up, the latest successful finish was
 `2026-11-22 21:55:28.415695 UTC` and the seven-day totals were nine runs,
 zero inserts, and zero updates. This query works on the deployed schema.
 
-[Migration 005](../db/migrations/005_sync_run_details.sql) is prepared and
-tested locally. It adds fetched, inserted, and updated fields, sanitized
+[Migration 005](../db/migrations/005_sync_run_details.sql) adds fetched,
+inserted, and updated fields, sanitized
 failure information, and the trigger. It preserves historical IDs and
 counts and leaves unknown past details NULL. It accepts historical-writer
 failure entries during rollout and normalizes their status to `failed`.
 This pipeline commits atomically, so it reserves `partial` without emitting
 that status. A hard cancellation or database outage can prevent a run row.
-Apply the migration before deploying the new writer. It has not been
-applied to Supabase, and the scheduled workflow still uses the earlier
-implementation. After the review branch is deployed, confirm the renamed
-`sync.yml` is visible in Actions, run a manual smoke test, and confirm the
-next scheduled run. Keep the existing historical evidence links.
+#### Production deployment evidence
+
+With the project owner's explicit approval, migration 005 committed on
+**November 22, 2026 at 11:12:22 p.m. CST** (November 23 at
+`05:12:22.362465 UTC`). An Actions preflight just before deployment found
+the deployed workflow active, with zero queued, in-progress, requested,
+waiting, or pending runs. The [latest completed run](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45074589596)
+was successful. PostgreSQL also showed no active sync advisory lock before
+the change or before commit.
+
+The migration ran in one transaction with a five-second lock timeout and
+an immediate availability check for the `sync_runs` table lock. Before
+committing, I verified the five new columns, the two generated count
+expressions, the status/fetched-count/trigger constraints, and the enabled
+compatibility trigger. The nine old history rows retained their original
+fields, and previously unrecorded details remained NULL.
+
+The row counts and SHA-256 fingerprints below matched before the migration,
+before commit, and after commit. The history fingerprint covers the seven
+original fields, ordered by run ID. Each economic fingerprint covers all
+stored fields, ordered by primary key.
+
+| Table | Rows | Matching SHA-256 fingerprint |
+| --- | ---: | --- |
+| countries | 20 | `0783572fde9d877490f778a9db41a1abaf89035d7284d331526bf34bb65d17dc` |
+| indicators | 3 | `0cc6d8af9a082055323521f00e7d4daf3e187de5db40129bdd91410a443a50c4` |
+| observations | 960 | `02888bd8c1490fbfe1dbd43df6d10b3d327463f9c87e28722beb7b80038dd4d9` |
+| sync_runs | 9 | `3918d8cfca0211359eb9219bdcf2fcfd867033cca3be7c3aedea2e90d44a2d0e` |
+
+After commit, a new connection authenticated as `app_reader` and read all
+nine history rows and the generated counts. The workflow on `main` continues
+to use the earlier compatible writer. A scheduled success after deployment is
+still needed as live end-to-end evidence. After PR #6 is deployed, confirm the
+renamed `sync.yml` is visible in Actions and verify its runs separately.
+
+The offline suite passed 32/32 after the migration. The live reader check
+again succeeded on SELECT and returned SQLSTATE 42501 for the rollback-only
+INSERT and DELETE probes. The read-only quality audit again found 950
+numeric values, 10 stored NULLs, 60 absent slots, and no duplicate keys or
+orphan references. The post-migration Actions check confirmed the workflow
+was active and found no later scheduled success yet.
+
+At 05:16:38 UTC on November 23, a second GitHub check still showed the workflow
+active and no post-migration scheduled runs. A read-only query of
+`sync_runs` as `app_reader` still returned only the nine pre-migration runs,
+with the latest matching Actions run `45074589596`. The timed comparison
+remains pending, and the completed migration evidence can be reviewed
+independently.
 
 ```sql
 SELECT run_id, started_at, finished_at, status,
