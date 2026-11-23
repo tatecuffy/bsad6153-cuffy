@@ -187,7 +187,9 @@ accepted. Reapplying it is not a migration strategy. Loader idempotency was
 verified separately: a repeat load inserted zero new rows and preserved existing
 records and audit timestamps. Migration 003 adds sync logging separately.
 
-## Milestone 3 Part A access verification
+## Access roles
+
+### Milestone 3 Part A access verification
 
 On November 22, 2026, I ran the reader verification command locally:
 

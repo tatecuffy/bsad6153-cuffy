@@ -1,6 +1,8 @@
 """Execute the golden-question reference SQL as app_reader."""
 
+import argparse
 import csv
+import json
 import os
 from collections import Counter
 from pathlib import Path
@@ -12,6 +14,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 QUESTIONS = ROOT / "evals/golden_questions.csv"
 FIELDS = ["id", "question", "category", "reference_sql", "correct_behavior", "source"]
+CATEGORIES = {"lookup", "aggregate", "trend", "compare", "should_decline"}
 
 
 def load_questions():
@@ -23,22 +26,33 @@ def load_questions():
 
     identifiers = set()
     for question in questions:
-        if set(question) != set(FIELDS) or any(not question[field] or not question[field].strip()
-                                                for field in FIELDS):
-            raise ValueError("Each question must populate all six columns.")
+        if set(question) != set(FIELDS) or any(
+            not question[field] or not question[field].strip()
+            for field in FIELDS if field != "reference_sql"
+        ):
+            raise ValueError("Each question must populate every non-SQL column.")
+        if question["category"] not in CATEGORIES or question["source"] not in {"baseline", "other"}:
+            raise ValueError("Unexpected question category or source.")
         if question["id"] in identifiers:
             raise ValueError("Duplicate golden-question ID.")
         identifiers.add(question["id"])
-        if question["reference_sql"].split()[0].upper() not in {"SELECT", "WITH"}:
+        sql = (question["reference_sql"] or "").split()
+        if question["category"] == "should_decline":
+            if sql:
+                raise ValueError("Decline questions must have empty reference SQL.")
+        elif not sql or sql[0].upper() not in {"SELECT", "WITH"}:
             raise ValueError("Reference SQL must be a SELECT query.")
+    baseline = sum(question["source"] == "baseline" for question in questions)
     categories = Counter(question["category"] for question in questions)
-    if len(questions) < 15 or categories["baseline"] < 8 or categories["decline"] < 3:
+    if len(questions) < 15 or baseline < 8 or categories["should_decline"] < 3:
         raise ValueError("Expected at least 15 questions, including 8 baseline and 3 decline.")
     return questions
 
 
-def check_reference(conn, questions):
+def check_reference(conn, questions, output=None, previous=None):
     failed = 0
+    answers = {}
+    declined = 0
     with conn.transaction(force_rollback=True):
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         conn.execute("SET LOCAL statement_timeout = '10s'")
@@ -49,6 +63,10 @@ def check_reference(conn, questions):
         print(f"Database user: app_reader | SQL validation started: {timestamp.isoformat()}")
 
         for question in questions:
+            if question["category"] == "should_decline":
+                declined += 1
+                print(f"[skip] {question['id']}: should_decline, no reference SQL")
+                continue
             try:
                 # Savepoints let a failed reference roll back without stopping the suite.
                 # A prepared query accepts a single SQL statement.
@@ -58,17 +76,44 @@ def check_reference(conn, questions):
                 print(f"[FAIL] {question['id']}: {type(error).__name__} (SQLSTATE {error.sqlstate})")
                 failed += 1
             else:
+                if not rows:
+                    print(f"[FAIL] {question['id']}: reference returned zero rows")
+                    failed += 1
+                    continue
+                answers[question["id"]] = rows
                 print(f"[ok] {question['id']} ({question['category']}): {len(rows)} row(s)")
 
-    print(f"Reference SQL: {len(questions) - failed}/{len(questions)} passed, {failed} failed.")
+    print(f"Reference SQL: {len(answers)}/{len(questions) - declined} passed, "
+          f"{failed} failed, {declined} decline cases skipped.")
+    if not failed:
+        # Serialize PostgreSQL numeric values as decimal strings and preserve NULLs.
+        normalized = json.loads(json.dumps(answers, default=str))
+        if previous is not None:
+            if previous.keys() != normalized.keys():
+                print("[FAIL] Baseline question IDs differ from this run.")
+                return 1
+            changed = [key for key, rows in normalized.items() if previous[key] != rows]
+            print("Changed reference answers: " + (", ".join(changed) or "none"))
+        if output is not None:
+            with output.open("x", encoding="utf-8") as file:
+                json.dump({"recorded_at": timestamp.isoformat(), "answers": normalized},
+                          file, indent=2, ensure_ascii=False)
+                file.write("\n")
     print("Scope: SQL execution only.")
     return int(failed != 0)
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, help="Save successful answers to a new JSON file.")
+    parser.add_argument("--compare", type=Path, help="Compare answers with a saved JSON run.")
+    args = parser.parse_args()
     try:
         questions = load_questions()
-    except (OSError, ValueError, csv.Error) as error:
+        previous = json.loads(args.compare.read_text(encoding="utf-8"))["answers"] if args.compare else None
+        if previous is not None and not isinstance(previous, dict):
+            raise ValueError("Baseline answers must be an object.")
+    except (OSError, ValueError, KeyError, TypeError, csv.Error) as error:
         print(f"[FAIL] Golden-question input: {type(error).__name__}.")
         return 1
 
@@ -79,8 +124,8 @@ def main():
         return 1
     try:
         with psycopg.connect(url, autocommit=True, connect_timeout=10) as conn:
-            return check_reference(conn, questions)
-    except (psycopg.Error, ValueError) as error:
+            return check_reference(conn, questions, args.output, previous)
+    except (psycopg.Error, ValueError, OSError) as error:
         print(f"[FAIL] Reference check: {type(error).__name__}.")
         return 1
 

@@ -13,11 +13,16 @@ Reference answers are SQL, not fixed values, because your data keeps syncing.
 
 ## Milestone 3 Part F reference checks
 
-The [golden-question set](golden_questions.csv) contains 15 questions: nine
-baseline, three coverage, and three decline. The decline queries show the
-available countries, indicators, or time resolution. The expected responses
-explain why that evidence cannot support an exact business forecast, a local
-monthly unemployment figure, or a guarantee of profitability.
+The [golden-question set](golden_questions.csv) contains 15 questions.
+Eight are sourced from the baseline or running list. Three are
+`should_decline` cases with empty SQL. Their expected responses explain why
+the data cannot support the requested business forecast, local monthly
+unemployment figure, or profitability guarantee.
+
+| Baseline IDs | Original evidence |
+| --- | --- |
+| Q04–Q08 | The five [Milestone 2 business queries](../db/queries.sql). Q06 narrows the unemployment trend to Japan. |
+| Q03, Q09, Q11 | The October 31 inflation and combined-indicators entries in the [baseline log](../docs/baseline_log.md). |
 
 From the project root, run the [checker](check_reference.py) with
 `APP_DATABASE_URL` configured privately for `app_reader`:
@@ -27,6 +32,10 @@ From the project root, run the [checker](check_reference.py) with
 ```
 
 ### Live results on November 22, 2026
+
+The table below records the original implementation. It ran SQL for the
+decline cases and printed row counts. Those two runs were seconds apart and
+provide no saved answer baseline or evidence of intervening scheduled syncs.
 
 | Run start (CST) | Database user | Queries passed | Failed | Exit code |
 | --- | --- | ---: | ---: | ---: |
@@ -47,3 +56,29 @@ The row counts describe these runs and may change as data syncs. The
 `correct_behavior` column defines how to grade future assistant answers.
 No chatbot has been built or tested, so these results provide no evidence
 that a chatbot gives correct answers or declines unsupported questions.
+
+### Corrected reference set and saved baseline
+
+On November 22, 2026 at **10:52:32 p.m. CST** (04:52:32 UTC on November 23),
+the corrected checker authenticated as `app_reader`, passed **12/12
+non-empty references**, and skipped the three decline cases. The
+[saved answers](reference_baseline.json) preserve the actual returned values.
+
+```powershell
+.venv/Scripts/python.exe -B evals/check_reference.py --output evals/reference_baseline.json
+```
+
+After at least two successful scheduled syncs **after that baseline**,
+record their Actions links and run:
+
+```powershell
+.venv/Scripts/python.exe -B evals/check_reference.py --compare evals/reference_baseline.json --output evals/reference_followup.json
+```
+
+The checker compares answer values and prints the IDs that changed.
+The timed follow-up is pending. Earlier equal row counts cannot establish
+whether answers changed.
+
+A smoke comparison at 10:59:06 p.m. CST on November 22 passed 12/12,
+skipped three, and reported no changed answers. It checked the comparison
+feature and took place before two later scheduled runs.

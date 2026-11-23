@@ -71,3 +71,14 @@ AI review decisions are asserted.
 
 Supporting evidence is linked in the [Milestone 3 handoff](milestone3.md).
 The student should review the final diff and checklist before submission.
+
+### Follow-up against the full Canvas rubric
+
+After the full instructions were supplied, Codex found that the earlier
+golden-question format, run-history fields, and test timing differed from
+Canvas. The correction uses the prescribed CSV categories and sources,
+checks non-empty SQL results, and saves an actual answer baseline. The original
+row-count runs remain documented as historical evidence and do not stand in
+for the timed comparison. The new upsert and logging migration were exercised
+in an isolated PostgreSQL engine, with expected counts asserted before each
+scenario. The deployed schedule and production schema were left untouched.

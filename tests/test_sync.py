@@ -13,22 +13,18 @@ import requests
 
 from ingest.fetch import FetchError, request_page, validate_observations
 from ingest.load import Snapshot, prepare_snapshot
-from ingest.sync import INSERT_OBSERVATION, UPDATE_OBSERVATION, run, sync_observations
+from ingest.sync import OBSERVATION_EXISTS, UPSERT_OBSERVATION, run, sync_observations
 from test_load import MemoryConnection, Result, write_synthetic_snapshot
 
 
 class SyncConnection(MemoryConnection):
     def execute(self, sql, params):
         table = self.tables["observations"]
-        if sql == INSERT_OBSERVATION:
+        if sql == OBSERVATION_EXISTS:
+            return Result(row=(params in table,))
+        if sql == UPSERT_OBSERVATION:
             key, fields = params[:3], params[3:]
-            if key in table:
-                return Result()
-            table[key] = fields
-            return Result(rowcount=1)
-        if sql == UPDATE_OBSERVATION:
-            fields, key, compared = params[:8], params[8:11], params[11:]
-            if table[key][:4] == compared:
+            if key in table and table[key][:4] == fields[:4]:
                 return Result()
             table[key] = fields
             return Result(rowcount=1)
@@ -103,7 +99,7 @@ class SyncTests(unittest.TestCase):
             self.assertEqual(snapshot.summary()["numeric"], 951)
 
     @patch("ingest.sync.prepare_snapshot")
-    @patch("ingest.sync.fetch.run", return_value={"snapshot_id": "synthetic"})
+    @patch("ingest.sync.fetch.run", return_value={"snapshot_id": "synthetic", "observation_records": 1})
     @patch("ingest.sync.sync_observations", return_value=dict(inserted=1, updated=0, unchanged=0))
     @patch("ingest.sync.psycopg.connect")
     def test_failed_success_log_rolls_back_and_records_failure_separately(
@@ -121,7 +117,8 @@ class SyncTests(unittest.TestCase):
         prepare.assert_called_once()
         write_observations.assert_called_once_with(primary, prepare.return_value)
         self.assertIs(primary.transaction.return_value.__exit__.call_args.args[0], RuntimeError)
-        self.assertEqual(fallback.execute.call_args.args[1][3:], ("failure", 0, 0, 0))
+        self.assertEqual(fallback.execute.call_args.args[1][3:],
+                         ("failed", 0, 0, 0, "manual", 1, "Sync failed during database transaction."))
 
 
 class BreakItTests(unittest.TestCase):
@@ -134,14 +131,15 @@ class BreakItTests(unittest.TestCase):
         self.primary.execute.return_value.fetchone.return_value = (True,)
         self.report = self.enterContext(patch("builtins.print"))
 
-    def assert_safe_failure(self, stage):
+    def assert_safe_failure(self, stage, fetched=None):
         self.primary.execute.assert_called_once()
         self.assertIn("pg_try_advisory_lock", self.primary.execute.call_args.args[0])
         self.primary.transaction.assert_not_called()
         self.failure_connection.execute.assert_called_once()
         statement, params = self.failure_connection.execute.call_args.args
         self.assertIn("INSERT INTO public.sync_runs", statement)
-        self.assertEqual(params[3:], ("failure", 0, 0, 0))
+        self.assertEqual(params[3:], ("failed", 0, 0, 0, "manual", fetched,
+                                     f"Sync failed during {stage}."))
         self.assertIn(f"failed during {stage}.", self.report.call_args.args[0])
 
     def test_world_bank_timeout_exhausts_retries_before_any_data_write(self):
@@ -177,9 +175,11 @@ class BreakItTests(unittest.TestCase):
 
             with (patch("ingest.sync.ROOT", root),
                   patch("ingest.sync.fetch.load_config", return_value={"end_year": 2026}),
-                  patch("ingest.sync.fetch.run", return_value={"snapshot_id": snapshot.name})):
+                  patch("ingest.sync.fetch.run", return_value={
+                      "snapshot_id": snapshot.name, "observation_records": 960,
+                  })):
                 self.assertEqual(run("synthetic URL"), 1)
-        self.assert_safe_failure("snapshot validation")
+        self.assert_safe_failure("snapshot validation", fetched=960)
 
 
 if __name__ == "__main__":

@@ -218,13 +218,22 @@ Project evidence:
 
 ### Milestone 3 — Automated sync and data quality
 
-The [World Bank sync workflow](.github/workflows/world-bank-sync.yml) runs
-on `main` at 00:17, 08:17, and 16:17 UTC and supports manual runs.
+The deployed World Bank workflow on `main` runs at 00:17, 08:17, and
+16:17 UTC and supports manual runs. This branch keeps the same workflow
+under the rubric filename [sync.yml](.github/workflows/sync.yml).
+Three checks a day give the maintainer another opportunity within the
+24-hour freshness threshold if one run is delayed or fails. This is a
+small, paginated annual dataset, so an eight-hour cadence avoids hourly
+requests while still catching revisions. The World Bank's year filter
+selects observation years. Its source-level update date cannot identify
+which historical rows changed, so the sync rechecks the configured range,
+then writes only new or changed rows.
 
 - [Data lineage, freshness policy, responsibilities, and submission checklist](docs/milestone3.md)
 - [Schema and live reader permission checks](docs/schema.md#milestone-3-part-a-access-verification)
-- [Data-quality audit results](docs/data_quality.md#milestone-3-part-e--live-audit-on-november-22-2026) and [audit SQL](db/data_quality_audit.sql)
+- [Data-quality audit results](docs/data_quality.md#milestone-3-part-e--live-audit-on-november-22-2026) and [audit SQL](db/quality_checks.sql)
 - [Break-it tests](docs/sync_tests.md#milestone-3-part-g--break-it-tests-on-november-22-2026), [scheduled-run evidence](docs/sync_tests.md#scheduled-evidence), and [automated test files](tests/)
+- [Last successful sync and seven-day status SQL](db/sync_status.sql)
 - [Golden questions](evals/golden_questions.csv), [reference checker](evals/check_reference.py), and [two live SQL validation runs](evals/README.md#live-results-on-november-22-2026)
 - [AI review decisions](docs/ai_review_log.md#milestone-3)
 

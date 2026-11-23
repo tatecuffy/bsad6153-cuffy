@@ -54,6 +54,44 @@ and [golden-question CSV](../evals/golden_questions.csv) contain the
 execution evidence and reference commands. These checks validate SQL
 execution and the two returned results. Chatbot behavior remains untested.
 
+### Rubric follow-up: source revision and back-to-back rerun
+
+On November 22, 2026, I used the PostgreSQL engine in
+[PGlite 0.5.4](https://pglite.dev/docs/) in a disposable in-memory database.
+The test uses the production upsert and run-history SQL with synthetic
+observations. It tests the SQL behavior independently of the network and
+Python orchestration. It creates no Supabase rows.
+
+```powershell
+node tests/check_sync_sql.mjs "PATH_TO_PGLITE/dist/index.js"
+```
+
+| Scenario | Expected | Observed in the local engine | Test sync_runs row |
+| --- | --- | --- | --- |
+| Simulated source revision | Change the one stored value and record one update. | 2.5 became 3.5 and provenance changed to the revision snapshot. Pass. | ID ending `0002`, success, 1 fetched, 0 inserted, 1 updated, 0 unchanged. |
+| Immediate identical rerun | Zero inserts and updates. Preserve accepted value, provenance, and audit time. | The repeated upsert affected zero rows. The recorded value, snapshot, and timestamp stayed the same. Pass. | ID ending `0003`, success, 1 fetched, 0 inserted, 0 updated, 1 unchanged. |
+| Rejected history write during a data transaction | Roll back the attempted data change and log failure separately. | The history constraint returned SQLSTATE 23514. The attempted 4.5 value rolled back, leaving 3.5. Pass. | ID ending `0005`, failed, 1 fetched, 0 inserted, 0 updated, 0 unchanged. |
+
+The engine test also verified that migration 005 handled historical and
+legacy-writer failure rows, and that `app_reader` could read the resulting rows.
+
+Separately, GitHub did cancel a real scheduled sync step on
+[November 21 at 07:23 UTC](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/44878781992).
+The next [scheduled run](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/44923002530)
+succeeded with 0 inserted, 0 updated, and 960 unchanged, matching Supabase run
+`360ed30f-39bc-488b-81cb-f52bc05f1997`. No Supabase row matched the cancelled
+interval. A process stopped from outside Python may exit before recording
+a failure. This was an observed interruption, not an intentional test.
+
+### Rubric follow-up: golden answers across scheduled syncs
+
+The [corrected baseline](../evals/reference_baseline.json) was captured as
+`app_reader` at 10:52:32 p.m. CST on November 22. All 12 non-empty
+references passed and the three decline cases were skipped. The original
+Part F runs above had no intervening scheduled syncs and retained counts
+instead of full answers. See the [follow-up command](../evals/README.md#corrected-reference-set-and-saved-baseline).
+Two later scheduled successes and the timed comparison have yet to be verified.
+
 The sync downloads the configured history and extends the upper bound to the
 current year when necessary. It compares records by country, indicator, and
 year. It updates values or observation metadata only when they differ, including
@@ -187,6 +225,31 @@ log to the corresponding Supabase row read as `app_reader`.
 The first and last Actions start times span **76 hours, 30 minutes, and
 24 seconds**. In CST they are November 19 at 11:22:53 a.m. and November 22
 at 3:53:17 p.m. The separate manual smoke test is excluded.
+
+The [manual smoke test](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/44441644826)
+ran after PR #4 was merged. Its database run was
+`ca0bfdc8-07ba-4096-bc65-a1ed1bce398a` with 0 inserted, 0 updated, and 960 unchanged.
+
+### Status query and migration rollout
+
+[sync_status.sql](../db/sync_status.sql) reports the latest successful check
+and summarizes inserts and updates during the last seven days. At the
+November 22, 2026 follow-up, the latest successful finish was
+`2026-11-22 21:55:28.415695 UTC` and the seven-day totals were nine runs,
+zero inserts, and zero updates. This query works on the deployed schema.
+
+[Migration 005](../db/migrations/005_sync_run_details.sql) is prepared and
+tested locally. It adds fetched, inserted, and updated fields, sanitized
+failure information, and the trigger. It preserves historical IDs and
+counts and leaves unknown past details NULL. It accepts historical-writer
+failure entries during rollout and normalizes their status to `failed`.
+This pipeline commits atomically, so it reserves `partial` without emitting
+that status. A hard cancellation or database outage can prevent a run row.
+Apply the migration before deploying the new writer. It has not been
+applied to Supabase, and the scheduled workflow still uses the earlier
+implementation. After the review branch is deployed, confirm the renamed
+`sync.yml` is visible in Actions, run a manual smoke test, and confirm the
+next scheduled run. Keep the existing historical evidence links.
 
 ```sql
 SELECT run_id, started_at, finished_at, status,

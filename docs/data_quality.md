@@ -54,7 +54,7 @@ A business's own costs and revenue are needed to decide whether to change its bu
 
 ## Milestone 3 Part E — live audit on November 22, 2026
 
-I ran [the audit SQL](../db/data_quality_audit.sql) against Supabase as
+I ran [the audit SQL](../db/quality_checks.sql) against Supabase as
 `app_reader` at **9:11:36 p.m. CST** on November 22, 2026
 (November 23 at 03:11:36 UTC). All queries used the same repeatable-read,
 read-only transaction. The latest successful sync recorded at audit time was
@@ -128,3 +128,54 @@ summarizes annual rates over a shared window. It cannot establish the
 cumulative increase in prices or a particular business's cost experience.
 The assistant should state the years used, disclose the excluded years,
 and say when gaps leave too little overlap for the requested comparison.
+
+### Rubric follow-up measurements and decisions
+
+A second read-only run of [quality_checks.sql](../db/quality_checks.sql) on
+**November 22, 2026 at 10:52:37 p.m. CST** counted every project table and
+measured NULL rates using the stored row count as the denominator. This
+measurement describes stored observations. The expected-grid counts above
+use a different denominator that also includes absent slots.
+
+| Table | Rows at follow-up |
+| --- | ---: |
+| countries | 20 |
+| indicators | 3 |
+| observations | 960 |
+| sync_runs | 9 |
+
+| Key field | NULL rows / stored rows at follow-up | NULL rate |
+| --- | ---: | ---: |
+| countries.name | 0 / 20 | 0.00% |
+| indicators.name | 0 / 3 | 0.00% |
+| observations.source_last_updated | 0 / 960 | 0.00% |
+| observations.value | 10 / 960 | 1.04% |
+
+The pipeline standardizes country and indicator references to database IDs
+and parses dates and numeric values. It rejects malformed values, repeated
+country–indicator–year keys, and missing references before writing a snapshot.
+The audit performed no data edits. Explicit NULLs remain NULL, omitted slots
+remain distinguishable, and extreme inflation values remain available for
+analysis while flagged for source review. The natural key catches the same
+country, indicator, and year even if two rows have different surrogate IDs.
+
+### Milestone 3 lineage, freshness, and ownership
+
+World Bank pages → validated fetch manifest → country/indicator key lookups
+and typed observation fields → Supabase `countries`, `indicators`, and
+`observations`. The job writes one `sync_runs` entry when it can reach the
+database. The future app reads as `app_reader`. The
+[data dictionary](data_dictionary.md#milestone-3-lineage-and-operations)
+details the transformations and the maintainer's alert responsibilities.
+
+The schedule targets an eight-hour polling interval. GitHub delays and
+outages can leave the newest successful sync arbitrarily old. The starter
+warns after 24 hours, plus up to ten minutes of cached lookups. This is a
+warning threshold. The provider's annual publication timing independently
+determines the latest economic year. The November 22 audit found 2025 as the
+latest numeric year, and all requested 2026 slots were absent.
+
+Change log for November 22, 2026: scheduled-run evidence showed repeated
+checks with unchanged data, and the live audit reproduced the earlier
+inflation coverage gaps. The maintainer should investigate a failed or
+missing run and flag persistent gaps to the person using the results.

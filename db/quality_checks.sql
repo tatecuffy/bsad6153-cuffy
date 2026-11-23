@@ -6,6 +6,24 @@ SELECT current_user AS audit_role, now() AS audit_at,
        (SELECT array_agg(iso3_code ORDER BY iso3_code) FROM public.countries) AS countries,
        (SELECT array_agg(indicator_code ORDER BY indicator_code) FROM public.indicators) AS indicators;
 
+SELECT 'countries' AS table_name, count(*) AS row_count FROM public.countries
+UNION ALL SELECT 'indicators', count(*) FROM public.indicators
+UNION ALL SELECT 'observations', count(*) FROM public.observations
+UNION ALL SELECT 'sync_runs', count(*) FROM public.sync_runs
+ORDER BY table_name;
+
+WITH fields AS (
+    SELECT 'observations.value' AS field, count(*) AS total, count(value) AS present
+    FROM public.observations
+    UNION ALL SELECT 'observations.source_last_updated', count(*), count(source_last_updated)
+    FROM public.observations
+    UNION ALL SELECT 'countries.name', count(*), count(name) FROM public.countries
+    UNION ALL SELECT 'indicators.name', count(*), count(name) FROM public.indicators
+)
+SELECT field, total, total - present AS null_rows,
+       round(100.0 * (total - present) / nullif(total, 0), 2) AS null_pct
+FROM fields ORDER BY field;
+
 -- Build the expected grid from the configuration, even if metadata is absent.
 WITH expected AS (
     SELECT country, indicator, year
