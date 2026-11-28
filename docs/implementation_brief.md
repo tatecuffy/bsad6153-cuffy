@@ -1,85 +1,55 @@
-# Milestone 2 implementation brief
+# Implementation Brief | Small Business Economic Data Assistant
 
-## Project and database
+**Funding decision.** Approve a dashboard-first pilot. Release up to $20 in prepaid LLM credit after verifying read-only access and spending controls. Continue AI only if it saves time over the dashboard and produces verifiable answers.
 
-The Small Business Economic Data Assistant supports the question: should a
-small business review its operating budget based on changing economic conditions?
-Milestone 2 implements the PostgreSQL foundation in Supabase; the future AI
-assistant, scheduled synchronization, and public data views remain later work.
+## 1. Current decision workflow
 
-The database has three related tables: `countries` stores country metadata,
-`indicators` stores definitions and source context, and `observations` stores
-one returned country–indicator–year record. Identity primary keys, foreign keys,
-source-code uniqueness, and a unique observation triple protect relationships
-and prevent duplicates. Every table has `first_seen_at` and `last_updated_at`.
-See [schema and ER diagram](schema.md).
+Weekly, I decide whether economic changes warrant reviewing a small business's operating budget. I find reliable figures on World Bank data pages, compare recent U.S. inflation, unemployment, and GDP growth, check available years, and flag expense, staffing, or revenue assumptions. Before proposing changes, I would check actual expenses, sales, and cash flow. Finding reliable data, judging relevance, and interpreting national trends for the business take time.
 
-## Ingestion and verified results
+**Timed baseline.** Oct. 23 inflation/expense review, **20 min**. Oct. 31 inflation, unemployment, and GDP growth, **10 min each**, plus a **12-min** combined review. All five entries recorded **4/5** confidence. [Milestone 1 log](baseline_log.md)
 
-`ingest/load.py` reads complete saved snapshot `20261102T041022160331Z` without
-fetching the API. It validates manifest-listed pages and keys, preserves Decimal
-precision and source provenance, and inserts parents before observations using
-parameterized SQL in one transaction. Returned nulls remain SQL NULL; omitted
-combinations create no rows. The default command validates locally; `--load`
-is required for a database connection through the command-line entry point.
+## 2. Three options
 
-Prior live verification confirmed 20 countries, three indicators, and 960
-observations for 2010–2025: 950 numeric values and ten NULLs, with no duplicate
-observation triples or broken foreign keys. The request included 2026, but its
-60 combinations were absent. Repeat loading inserted zero rows. A prior
-before-and-after comparison verified unchanged records and audit timestamps.
-These are recorded results, not claims of another live run during preparation.
+| Option | Benefits | Costs and risks |
+| --- | --- | --- |
+| No new technology | Familiar sources and direct judgment. | $0 in new services. Manual lookup takes time and can mix reporting years. |
+| PostgreSQL dashboard | SQL handles latest values, trends, comparisons, and missing-year flags. | Build and maintain views. Cold starts, outages, or stale data can hinder reviews. |
+| LLM chatbot or agent | Adds plain-language follow-ups and cited briefings about which assumptions to check. SQL supplies the figures. | Adds token spend, latency, evaluation, and oversight. The model can invent figures or overstate implications. |
 
-All five analytical queries succeeded, returning 20, 20, 120, 6, and 20 rows.
-Argentina averaged 3.53% GDP growth in 2021–2025 versus 0.60% in 2015–2025,
-with 5.17 percentage points of longer-window volatility. Query 4 excluded
-Argentina and the United States because their 2025 inflation values were NULL,
-not because the available data established failure of the thresholds.
-See [verified findings](query_findings.md).
+The verified Supabase snapshot has 960 annual observations across 20 countries and three indicators, including ten NULLs. Five SQL analyses were verified. Sync code, a scheduled workflow, and the Streamlit freshness banner exist. Dashboard views and integrated AI are pending. [SQL findings](query_findings.md) · [Sync status](sync_tests.md)
 
-## Testing and reproducibility
+## 3. Value hypotheses and measurement
 
-Run `python -B -m unittest discover -s tests -v` in the project environment.
-Portable unit tests generate clearly labeled synthetic pages in temporary
-directories and use an in-memory database double. They test parsing, missing
-values, provenance, duplicate prevention, rollback, and the offline CLI guard.
-They never publish synthetic records as economic data or patch production
-snapshot counts. The optional full-snapshot integration test retains the
-actual-data checks and is skipped when the ignored snapshot is unavailable.
-Neither test mode connects to Supabase. Live PostgreSQL behavior was verified
-separately as described above.
+- **Dashboard:** Reduce median single-indicator review time from **10 to ≤6 min**, using the three Oct. 31 checks.
+- **LLM:** Reduce median combined review time from **12 to ≤8 min** and beat dashboard-only time on matched tasks. Usable outputs must match SQL on values, years, and gaps, with correct citations.
 
-Submission-preparation verification: all 21 tests passed locally, including the
-real-snapshot integration check. In a temporary clean-source copy with no `.env`
-or `data/raw`, 20 tests passed and the optional integration check was skipped.
-Both runs used the existing installed dependencies; no fresh dependency install
-was claimed. Whitespace checks passed, and the candidate-file secret-pattern
-scan found no potential matches. Private `.env` files were not read.
+In Milestone 4, time each real review from lookup to a checked decision or briefing, including waits and verification. Log date, task, features, time, usefulness, gaps, and confidence. Compare medians and sample sizes by task and mode. Start with dashboard-only reviews and repeat matched tasks when AI is available. The combined baseline has one entry. [Usage log](usage_log.md)
 
-## AI review decision
+## 4. Monthly cost estimate and spending limit
 
-We rejected Codex's proposed `CHECK (source_id = 2)` because it unnecessarily
-restricted every indicator to one source identifier. The final column is
-`source_id integer NOT NULL`. Ingestion must validate source IDs, or a future
-reference table must enforce them. This permits other IDs but does not alone
-provide complete multi-source support. See [AI review log](ai_review_log.md).
+**Provisional USD estimates.** One low-traffic Render web service ($0), one Supabase Free project ($0), three daily GitHub Actions syncs on standard Linux runners within quota ($0), and public World Bank API access ($0 budgeted). [Render](https://render.com/docs/free) · [Supabase](https://supabase.com/pricing) · [GitHub](https://docs.github.com/en/billing/concepts/product-billing/github-actions) · [World Bank](https://datahelpdesk.worldbank.org/knowledgebase/articles/889392)
 
-## Access proposal and limitations
+At 100 AI interactions/month with 4,000 input and 1,000 output tokens per interaction across all calls, Claude Haiku 4.5 at $1 input and $5 output per million tokens yields **$0.90/month**. Estimated service total is **$0 for the dashboard and $0.90 with AI**, excluding labor. Published rates were checked. Verify rates and plan eligibility before activation. [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing)
 
-`db/roles.sql` now contains a proposed password-free `app_reader` role with
-schema usage and SELECT on the three data tables. It has not been applied or
-permission-tested. Private authentication setup and verification of effective
-permissions require separate authorization; this requirement remains pending.
-See [access-role proposal](access_roles.md).
+**Hard $20 prepaid LLM API cap.** Disable auto-reload, require sign-in, bound tool calls and tokens, and reserve maximum request cost before each call. If credit is insufficient, unknown, or exhausted, stop model calls, show a notice, and keep SQL views available. [Prepaid billing](https://support.anthropic.com/en/articles/8977456-how-do-i-pay-for-my-api-usage)
 
-The data is historical and national, not firm-level evidence. Averages can
-hide annual variation; differing windows and missingness affect comparisons.
-These descriptive findings establish no causation. Business owners should
-compare them with actual expenses, sales, and cash flow. `DO NOTHING` preserves
-existing rows but does not apply source revisions. Raw snapshots are ignored
-by Git and must be supplied locally for the full integration check. No complete
-vintage archive or automated sync is implemented.
+## 5. Risks and prohibited AI actions
 
-## Screencast
+Stale, revised, or missing national data and unsupported conclusions can mislead managers, affecting employees' hours and supplier orders. Show sources, observation years, gaps, and last successful sync. Managers check firm records privately and retain decision authority. Source data are public aggregates, but prompts or logs could expose names, payroll, invoices, or credentials. Send only public results and sanitized questions. Keep raw prompts and secrets out of logs. Prohibit AI from changing records or budgets, making financial or staffing decisions, placing orders, sending messages, or disclosing private data.
 
-[Milestone 2 Loom screencast](https://www.loom.com/share/8d7ebcd1a555424c8294d346c0a7cfa7)
+## 6. Implementation Scorecard
+
+| Official factor | Rating | Project evidence |
+| --- | --- | --- |
+| Real user and workflow | Green | My weekly budget-review decision has five timed baseline entries. |
+| Data access | Green | World Bank retrieval and the Supabase load were verified. |
+| Data understanding | Green | The data dictionary and SQL findings document definitions, coverage, and NULLs. |
+| Freshness and monitoring | Yellow | Sync logging and a freshness banner exist, with live scheduled runs unverified. |
+| Grounding | Yellow | Five verified SQL analyses can supply evidence, with chatbot citations untested. |
+| Bounded autonomy | Yellow | Sign-in code and reader migrations exist, with live permissions and AI limits unverified. |
+| Evaluation | Red | Golden questions and assistant evaluation results are pending. |
+| Measured value and cost | Yellow | Timed baselines and provisional costs exist, with pilot usage unmeasured. |
+| Adoption | Red | First-time task completion and willingness to reuse are untested. |
+| Governance and accountability | Yellow | Human approval and data-handling rules are defined, with enforcement untested. |
+
+**Two weakest factors.** **Evaluation:** Build 15 golden questions, verify expected answers against SQL, and test accuracy and missing-data handling. **Adoption:** Conduct a first-time user test, record task completion and feedback, and evaluate willingness to reuse the tool.
