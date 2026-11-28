@@ -90,7 +90,10 @@ The [corrected baseline](../evals/reference_baseline.json) was captured as
 references passed and the three decline cases were skipped. The original
 Part F runs above had no intervening scheduled syncs and retained counts
 instead of full answers. See the [follow-up command](../evals/README.md#corrected-reference-set-and-saved-baseline).
-Two later scheduled successes and the timed comparison have yet to be verified.
+The first two qualifying scheduled successes and the November 27 read-only
+comparison are documented in the [evaluation notes](../evals/README.md#follow-up-after-two-successful-scheduled-syncs).
+All 12 executable references passed, three decline cases were skipped, and
+zero reference answers changed.
 
 The sync downloads the configured history and extends the upper bound to the
 current year when necessary. It compares records by country, indicator, and
@@ -276,8 +279,9 @@ stored fields, ordered by primary key.
 
 After commit, a new connection authenticated as `app_reader` and read all
 nine history rows and the generated counts. The workflow on `main` continues
-to use the earlier compatible writer. A scheduled success after deployment is
-still needed as live end-to-end evidence. After PR #6 is deployed, confirm the
+to use the earlier compatible writer. The [first qualifying scheduled success](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45257238579)
+on November 23 shows that the earlier writer ran successfully after migration 005.
+After PR #6 is deployed, confirm the
 renamed `sync.yml` is visible in Actions and verify its runs separately.
 
 The offline suite passed 32/32 after the migration. The live reader check
@@ -290,9 +294,9 @@ was active and found no later scheduled success yet.
 At 05:16:38 UTC on November 23, a second GitHub check still showed the workflow
 active and no post-migration scheduled runs. A read-only query of
 `sync_runs` as `app_reader` still returned only the nine pre-migration runs,
-with the latest matching Actions run `45074589596`. The timed comparison
-remains pending, and the completed migration evidence can be reviewed
-independently.
+with the latest matching Actions run `45074589596`. The
+[later Actions evidence and timed comparison](../evals/README.md#follow-up-after-two-successful-scheduled-syncs)
+are documented separately.
 
 ```sql
 SELECT run_id, started_at, finished_at, status,

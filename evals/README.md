@@ -68,31 +68,31 @@ non-empty references**, and skipped the three decline cases. The
 .venv/Scripts/python.exe -B evals/check_reference.py --output evals/reference_baseline.json
 ```
 
-After at least two successful scheduled syncs **after that baseline**,
-record their Actions links and run:
+### Follow-up after two successful scheduled syncs
+
+The first two successful scheduled runs on `main` after the saved baseline were:
+
+| Scheduled run | Start (CST) | Start (UTC) |
+| --- | --- | --- |
+| [45257238579](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45257238579) | November 23, 2026, 2:14 p.m. | November 23, 20:14:07 |
+| [45369720982](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45369720982) | November 24, 2026, 3:55 a.m. | November 24, 09:55:04 |
+
+An earlier [November 23 scheduled run](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45132635286)
+failed at the **Sync World Bank observations** step. Its cause was not verified,
+and the run was excluded from the two qualifying successes.
+
+On **November 27, 2026 at 6:40 p.m. CST** (November 28 at 00:40:04 UTC),
+the checker authenticated to Supabase as `app_reader` and ran:
 
 ```powershell
-.venv/Scripts/python.exe -B evals/check_reference.py --compare evals/reference_baseline.json --output evals/reference_followup.json
+.venv/Scripts/python.exe -B evals/check_reference.py --compare evals/reference_baseline.json
 ```
 
-The checker compares answer values and prints the IDs that changed.
-The timed follow-up is pending. Earlier equal row counts cannot establish
-whether answers changed.
+The checker compared returned answer values with the saved baseline. **12/12
+executable references passed**, with zero failures. It skipped the three
+`should_decline` cases as designed and reported **zero changed reference
+answers**. The comparison ran in a read-only transaction and printed its
+results without writing a report file.
 
-A smoke comparison at 10:59:06 p.m. CST on November 22 passed 12/12,
-skipped three, and reported no changed answers. It checked the comparison
-feature and took place before two later scheduled runs.
-
-At **11:12:57 p.m. CST on November 22** (November 23 at 05:12:57 UTC),
-GitHub reported **zero successful scheduled runs** after the saved baseline.
-The workflow remained active. The next nominal schedule slots were
-November 23 at 2:17 a.m. and 10:17 a.m. CST. Use the actual completed
-scheduled successes to decide when the follow-up qualifies.
-
-A second check at **11:16:38 p.m. CST on November 22** (November 23 at
-05:16:38 UTC) again found **zero qualifying scheduled successes**. The
-[latest scheduled success](https://github.com/tatecuffy/bsad6153-cuffy/actions/runs/45074589596)
-started November 22 at 21:53:17 UTC and matched Supabase run
-`397092ca-e978-49d6-8ae1-f934ef673fe3`. Both predate the baseline. No
-follow-up checker run was performed, so there are no follow-up answer
-changes or row-count differences to report.
+The offline Python suite passed **32/32**. These are local test results.
+GitHub reported no check runs or commit statuses on the PR head at verification.

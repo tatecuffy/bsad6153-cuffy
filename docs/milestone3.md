@@ -65,7 +65,7 @@ project owner and the repository's documented sync and evaluation requirements.
 - [ ] **A. Read-only access.** Link [live role evidence](schema.md#milestone-3-part-a-access-verification), including the successful login and SELECT, denied INSERT and DELETE, and owner-confirmed disabled Supabase Data API.
 - [ ] **B–D. Sync, logging, and schedule.** Link [the deployed implementation PR](https://github.com/tatecuffy/bsad6153-cuffy/pull/4) and [three scheduled successes](sync_tests.md#scheduled-evidence) with matching Supabase IDs, timestamps, counts, and a span of more than 48 hours.
 - [ ] **E. Quality audit.** Link the [dated results](data_quality.md) and [reproducible SQL](../db/quality_checks.sql), including the shared-year Argentina–U.S. inflation comparison.
-- [ ] **F. Golden questions.** Link the [15-question CSV](../evals/golden_questions.csv), [reference checker](../evals/check_reference.py), and [two actual runs](../evals/README.md). Describe them as SQL checks.
+- [x] **F. Golden questions.** The [15-question CSV](../evals/golden_questions.csv), [reference checker](../evals/check_reference.py), and [dated follow-up](../evals/README.md#follow-up-after-two-successful-scheduled-syncs) document the SQL verification.
 - [ ] **G. Break-it tests.** Link [the two failure tests and two reference checks](sync_tests.md#milestone-3-part-g--break-it-tests-on-november-22-2026) and include the final local test result.
 - [ ] **H. Handoff.** Link this page, the [README](../README.md#milestone-3--automated-sync-and-data-quality), and the [AI review log](ai_review_log.md#milestone-3). Explain which app features are planned.
 - [ ] Review the diff and verify screenshots, recordings, and Git changes are free of credentials. Record any further AI review decisions in the PR.
@@ -84,8 +84,16 @@ project owner and the repository's documented sync and evaluation requirements.
 The subsequent full-rubric audit passed 32 offline tests and the isolated
 PostgreSQL migration, upsert, rerun, and rollback checks. The corrected
 golden set passed all 12 executable references and saved the actual
-answers. The three decline cases contain no SQL. The later comparison
-required by Canvas still needs two scheduled successes after that baseline.
+answers. The three decline cases contain no SQL.
+
+### Golden-question follow-up on November 27, 2026
+
+The comparison ran at **6:40 p.m. CST** as `app_reader` after two qualifying
+scheduled successes. **12/12 executable references passed**, three decline
+cases were skipped as designed, and zero answers changed. The
+[evaluation notes](../evals/README.md#follow-up-after-two-successful-scheduled-syncs)
+link both successful runs and record the earlier November 23 failure.
+All **32 local Python tests passed**. GitHub reported no PR checks at verification.
 
 ## Screencast outline — 5 minutes
 
@@ -95,7 +103,7 @@ required by Canvas still needs two scheduled successes after that baseline.
 | 0:35–1:35 | Show the workflow file, cron schedule, and the secret reference that supplies the writer URL. Open Actions and show three scheduled successes over 76 hours. Match one run ID to Supabase, then show `sync_status.sql` and its last-success and seven-day results. |
 | 1:35–2:20 | Run the read-only checker and show `app_reader`, successful SELECT, and the DELETE and INSERT denials with SQLSTATE 42501. Show the Data API toggle if the screen contains no credentials. |
 | 2:20–3:20 | Open the Part E report and then the SQL. Explain 950 numeric values, 10 NULLs, and 60 absent 2026 slots. Show the seven shared Argentina–U.S. years and explain why pairing the years matters. |
-| 3:20–4:20 | Run `check_reference.py`. Show the saved baseline and, when available, the later comparison after two scheduled syncs. Explain a changed answer, or why none did. Show the local source revision or identical-rerun test and its run-history row. |
+| 3:20–4:20 | Show the saved baseline, the two qualifying scheduled runs, and the November 27 comparison that found zero changed answers. Show the local source revision or identical-rerun test and its run-history row. |
 | 4:20–5:00 | Explain the natural key and edited-value check in the upsert. Close with the 24-hour warning and who responds when a run fails. |
 
 Keep `.env`, password managers, connection dialogs, and secrets settings

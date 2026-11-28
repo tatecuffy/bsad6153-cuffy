@@ -81,4 +81,14 @@ checks non-empty SQL results, and saves an actual answer baseline. The original
 row-count runs remain documented as historical evidence and do not stand in
 for the timed comparison. The new upsert and logging migration were exercised
 in an isolated PostgreSQL engine, with expected counts asserted before each
-scenario. The deployed schedule and production schema were left untouched.
+scenario. The deployed schedule and production schema were left untouched
+during those isolated checks.
+
+For the final follow-up, Tate asked Codex to verify PR #6 without writing to
+production. Codex checked the Actions trigger and outcome, reviewed the
+reference checker's read-only transaction, and ran it as `app_reader` after
+the two qualifying successes. On November 27 at 6:40 p.m. CST, 12/12 SQL
+references passed, three decline cases were skipped, and zero answers changed.
+The [evaluation notes](../evals/README.md#follow-up-after-two-successful-scheduled-syncs)
+record the run links and the failed November 23 step. The 32 passing local
+Python tests are separate from GitHub PR checks, which were absent at verification.
