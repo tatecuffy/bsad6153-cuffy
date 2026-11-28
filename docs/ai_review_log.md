@@ -59,3 +59,36 @@ adding providers beyond the World Bank.
 
 This entry records the actual source-ID constraint decision only. No additional
 AI review decisions are asserted.
+
+## Milestone 3
+
+| Work | Direct and read | Verify | Decide and limitations |
+| --- | --- | --- | --- |
+| Sync, logging, and schedule | Codex helped build the revision-aware sync, run history, and workflow. The project owner prioritized getting scheduled evidence and confirmed the first manual run. | The owner reported 0 inserted, 0 updated, and 960 unchanged for the manual run. Codex matched three schedule-triggered Actions successes to Supabase by run ID and counts. | Fetch the small configured history and only write changes, so older revisions can be detected. The project stores the latest accepted value and does not keep a complete revision archive. |
+| Reader permissions and RLS | The project owner questioned the Supabase RLS warning and requested explicit RLS with a SELECT-only policy. Codex updated the migrations and checker. | The owner confirmed the Data API is disabled and configured the reader credential privately. Codex ran the live reader check and recorded a successful SELECT and SQLSTATE 42501 for both INSERT and DELETE. | Keep RLS and a role-specific SELECT policy. Codex's first local credential setup script had a syntax error. A later retry also depended on Git being on PATH in standalone PowerShell. The owner identified that shell issue and configured the credential privately. |
+| Data quality and golden questions | Codex drafted the SQL audit, matched-year comparison, CSV, and reference checker. The owner specified the required audit dimensions and minimum question mix. | Codex ran the audit as the reader and executed all 15 references twice. The runs and actual aggregates are saved in the repository. | Use shared valid years for comparisons and keep NULLs distinct from absent rows. Treat anomaly thresholds as review flags. Reference execution provides no evidence of chatbot answer quality. |
+| Break-it testing and handoff | The owner required reproducible, isolated failures and asked Codex to use actual evidence in the handoff. Codex added two tests and checked report links and run history. | Codex ran the mocked timeout and corrupt-input tests, checked the two SQL reference results, and recorded the commands and outcomes. | Use mocks and temporary inputs so scheduled runs and production data are unaffected. These checks do not reproduce a real production outage or test an alert channel. |
+
+Supporting evidence is linked in the [Milestone 3 handoff](milestone3.md).
+The student should review the final diff and checklist before submission.
+
+### Follow-up against the full Canvas rubric
+
+After the full instructions were supplied, Codex found that the earlier
+golden-question format, run-history fields, and test timing differed from
+Canvas. The correction uses the prescribed CSV categories and sources,
+checks non-empty SQL results, and saves an actual answer baseline. The original
+row-count runs remain documented as historical evidence and do not stand in
+for the timed comparison. The new upsert and logging migration were exercised
+in an isolated PostgreSQL engine, with expected counts asserted before each
+scenario. The deployed schedule and production schema were left untouched
+during those isolated checks.
+
+For the final follow-up, Tate asked Codex to verify PR #6 without writing to
+production. Codex checked the Actions trigger and outcome, reviewed the
+reference checker's read-only transaction, and ran it as `app_reader` after
+the two qualifying successes. On November 27 at 6:40 p.m. CST, 12/12 SQL
+references passed, three decline cases were skipped, and zero answers changed.
+The [evaluation notes](../evals/README.md#follow-up-after-two-successful-scheduled-syncs)
+record the run links and the failed November 23 step. The 32 passing local
+Python tests are separate from GitHub PR checks, which were absent at verification.

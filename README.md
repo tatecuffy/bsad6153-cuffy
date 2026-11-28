@@ -4,10 +4,10 @@
 **My decision:** Should a small business review its operating budget based on changing economic conditions?
 **Website:** &lt;your domain, from Week 4&gt;
 
-This eight-week project is building toward a complete AI system. Through Milestone 2,
-World Bank retrieval, a Supabase PostgreSQL schema, saved-snapshot loading, and SQL
-analysis are implemented. Scheduled sync, public data views, a chatbot, and an agent
-remain later milestones. AI-generated work is reviewed and verified by the student.
+This eight-week project is building toward a complete AI system. Milestone 3
+adds scheduled World Bank sync, read-only database access, run history, a data
+quality audit, and golden-question SQL references. The Streamlit starter has a
+freshness banner. Public dashboard views, a chatbot, and an agent remain future work.
 
 ---
 
@@ -150,9 +150,9 @@ Run `.venv\Scripts\python.exe ingest/fetch.py` from the repository root.
 No API credentials are needed. See [ingestion instructions](ingest/README.md)
 for tests, outputs, pagination, retries, and important functions, and the
 [data dictionary](docs/data_dictionary.md) for definitions and limitations.
-Raw downloads stay in ignored `data/raw/`; a small authentic sample is saved in
-`data/sample/world_bank_sample.json`. Database loading is implemented in
-Milestone 2 below; scheduled sync remains later work.
+Raw downloads stay in ignored `data/raw/`. A small authentic sample is saved in
+`data/sample/world_bank_sample.json`. Milestone 2 covers loading a saved
+snapshot, and Milestone 3 covers scheduled sync.
 
 ### Milestone 2 — PostgreSQL database and SQL analysis
 
@@ -167,8 +167,8 @@ above. Offline unit tests require neither `.env` nor a database. For separately
 authorized live loading, privately configure `DATABASE_URL` with the intended
 Supabase Session pooler connection in the ignored local `.env`; never paste or
 print it. The existing schema is already deployed. Do not reapply `schema.sql`
-as part of routine loading. Read-only role SQL is proposed but not yet applied
-or permission-tested; see [access-role proposal](docs/access_roles.md).
+as part of routine loading. The Milestone 3 reader is covered by the
+[live access verification](docs/schema.md#milestone-3-part-a-access-verification).
 
 From the repository root in PowerShell, run the offline suite:
 
@@ -215,6 +215,27 @@ Project evidence:
 - [Five SQL queries](db/queries.sql) and [verified findings](docs/query_findings.md)
 - [Data quality assessment](docs/data_quality.md) and [AI review log](docs/ai_review_log.md)
 - [Milestone 2 Loom screencast](https://www.loom.com/share/8d7ebcd1a555424c8294d346c0a7cfa7)
+
+### Milestone 3 — Automated sync and data quality
+
+The deployed World Bank workflow on `main` runs at 00:17, 08:17, and
+16:17 UTC and supports manual runs. This branch keeps the same workflow
+under the rubric filename [sync.yml](.github/workflows/sync.yml).
+Three checks a day give the maintainer another opportunity within the
+24-hour freshness threshold if one run is delayed or fails. This is a
+small, paginated annual dataset, so an eight-hour cadence avoids hourly
+requests while still catching revisions. The World Bank's year filter
+selects observation years. Its source-level update date cannot identify
+which historical rows changed, so the sync rechecks the configured range,
+then writes only new or changed rows.
+
+- [Data lineage, freshness policy, responsibilities, and submission checklist](docs/milestone3.md)
+- [Schema and live reader permission checks](docs/schema.md#milestone-3-part-a-access-verification)
+- [Data-quality audit results](docs/data_quality.md#milestone-3-part-e--live-audit-on-november-22-2026) and [audit SQL](db/quality_checks.sql)
+- [Break-it tests](docs/sync_tests.md#milestone-3-part-g--break-it-tests-on-november-22-2026), [scheduled-run evidence](docs/sync_tests.md#scheduled-evidence), and [automated test files](tests/)
+- [Last successful sync and seven-day status SQL](db/sync_status.sql)
+- [Golden questions](evals/golden_questions.csv), [reference checker](evals/check_reference.py), and [two live SQL validation runs](evals/README.md#live-results-on-november-22-2026)
+- [AI review decisions](docs/ai_review_log.md#milestone-3)
 
 ## Credits
 

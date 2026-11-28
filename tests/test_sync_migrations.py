@@ -14,6 +14,9 @@ def migration_sql(filename):
 
 
 class SyncMigrationTests(unittest.TestCase):
+    def test_role_setup_matches_deployment_migration(self):
+        self.assertEqual(migration_sql("../roles.sql"), migration_sql("004_app_reader.sql"))
+
     def test_sync_history_enables_rls_and_keeps_api_revocations(self):
         sql = migration_sql("003_sync_runs.sql")
         statements = (

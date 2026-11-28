@@ -165,3 +165,28 @@ Annual national inflation, unemployment, and growth provide broad context for
 reviewing a budget. They do not establish a firm's actual cost increases or
 justify automatic changes. Comparing countries adds context and enough actual
 records for the assignment; foreign observations are not local business facts.
+# Milestone 3 lineage and operations
+
+| Destination | Source and transformations |
+| --- | --- |
+| countries | The World Bank country endpoint supplies IDs, names, region, income level, and capital. Fetch rejects aggregates and unexpected country sets. The loader maps unique ISO3 codes to database IDs. |
+| indicators | The World Bank indicator endpoint supplies codes, labels, source notes, and source IDs. The loader validates the source and adds the project's measurement unit and annual frequency. |
+| observations | Paginated annual records are checked for complete pages, duplicate natural keys, matching metadata, valid years, and finite numeric values. The loader parses years, preserves decimal values and explicit NULLs, maps country and indicator keys, and adds retrieval time, source update date, snapshot ID, and page filename. The sync preserves unchanged records and their accepted provenance. |
+| sync_runs | The sync records run times and observation counts. Data changes and the success record commit together. Failure logging is attempted separately when the database is reachable. |
+
+The [Part E quality report](data_quality.md) records the live counts and
+the shared-year inflation comparison. On November 22, 2026, the audit found
+no stored 2026 rows and uneven inflation coverage for Argentina and the
+United States. Omitted combinations and stored NULLs stay distinct.
+
+The job checks the source every eight hours under normal operation. There is
+no finite worst-case freshness guarantee during an outage or publication
+delay. The application warns after 24 hours since the last successful check,
+subject to its ten-minute cache. The latest available observation year is
+separate from that timestamp.
+
+In a company, the data engineering owner would maintain the workflow, schema,
+and reader permissions. The pipeline on-call should receive failed or missed
+run alerts. The analyst or product owner should be notified when persistent
+gaps affect published comparisons. In this project the maintainer monitors
+Actions and Supabase. External notification delivery has yet to be verified.
